@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <cstring>
+#include <optional>
 
 #define warn printf
 #define fatal printf
@@ -19,6 +20,7 @@ static int duration = 0;
 static int aligned = 0;
 static int secaligned = 0;
 static int offset = 0;
+static bool warming_up_over = false;
 static pthread_barrier_t globalt_barr;
 static pthread_barrier_t align_barr;
 static timespec globalt;
@@ -199,6 +201,7 @@ void* timer_thread(void *thread_parameters_void) {
     thread_statistics* const statistics = parameters->stats;
     timespec now, next, interval, stop;
     sigset_t sigset;
+    bool warmed_up = false;
 
     cpu_set_t mask;
     CPU_ZERO(&mask);
@@ -307,6 +310,15 @@ void* timer_thread(void *thread_parameters_void) {
             next.tv_nsec += interval.tv_nsec;
             timespec_normalize(next);
         }
+
+        if (!warmed_up && warming_up_over) {
+            statistics->min = 1000000;
+            statistics->max = 0;
+            statistics->avg = 0.0;
+            statistics->threadstarted = 1;
+            statistics->smi_count = 0;
+            warmed_up = true;
+        }
     }
 
     return nullptr;
@@ -354,7 +366,7 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
 }
 
 
-void main_loop(const int thread_count) {
+void main_loop(const int thread_count, const int running_time_us) {
     thread_parameters ** const parameters_array = new thread_parameters*[thread_count];
     thread_statistics ** const statistics_array = new thread_statistics*[thread_count];
 
@@ -364,43 +376,60 @@ void main_loop(const int thread_count) {
         std::cout << "thread created" << std::endl;
     }
 
-    while(!shutdown) {
-        // std::cout << "mainloop stats" << std::endl;
-        for(int i = 0; i < thread_count; i++) {
-            print_statistics(parameters_array[i], i);
-        }
-        usleep(10000);
+    usleep(2'000'000);
+    std::cout << "warmup finished" << std::endl;
+    warming_up_over = true;
+    usleep(running_time_us);
+    shutdown = true;
+    usleep(100'000);
+    for(int i = 0; i < thread_count; i++) {
+        print_statistics(parameters_array[i], i);
     }
 }
 
-int main(int argc, char const *argv[]){
-    std::cout << "before loop" << std::endl;
-    main_loop(4);
-    std::cout << "after loop" << std::endl;
-
-
-
-	constexpr int thread_count = 5;
-	std::array<pthread_t, thread_count> thread_ids;
-
-    std::cout << "Starting thread creation" << std::endl;
-
-	for(int i = 0; i < thread_count; i++) {
-		pthread_create(&thread_ids[i], NULL, &func, (&thread_ids[0])+i);
-        std::cout << "Created thread: " << i << ", " << thread_ids[i] << ", or the same: " << *((&thread_ids[0])+i) << std::endl;
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-	}
-
-    std::cout << "Created all threads" << std::endl;
-    
-    for(int i = 0; i < thread_count; i++) {
-    	pthread_join(thread_ids[i], NULL); 
+int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default_value) {
+    if (argc <= position) {
+        return default_value;
     }
 
-    std::cout << "All thread exited" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
-    std::cout << "Done" << std::endl;
+    int value = std::atoi(argv[position]);
 
-	// int pthread_create(pthread_t * thread, const pthread_attr_t * attr, void * (*start_routine)(void *), void *arg);
+    if (value) {
+        return value;
+    }
+    
+    return default_value;
+}
+
+int main(int argc, char const *argv[]){
+    const int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
+    const int run_for_us = parse_nth_arg_as_int(argc, argv, 2, 30'000'000);
+    main_loop(threads_to_use, run_for_us);
+    std::cout << "Main loop finished" << std::endl;
+
+
+
+	// constexpr int thread_count = 5;
+	// std::array<pthread_t, thread_count> thread_ids;
+
+ //    std::cout << "Starting thread creation" << std::endl;
+
+	// for(int i = 0; i < thread_count; i++) {
+	// 	pthread_create(&thread_ids[i], NULL, &func, (&thread_ids[0])+i);
+ //        std::cout << "Created thread: " << i << ", " << thread_ids[i] << ", or the same: " << *((&thread_ids[0])+i) << std::endl;
+ //        // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+	// }
+
+ //    std::cout << "Created all threads" << std::endl;
+    
+ //    for(int i = 0; i < thread_count; i++) {
+ //    	pthread_join(thread_ids[i], NULL); 
+ //    }
+
+ //    std::cout << "All thread exited" << std::endl;
+ //    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+ //    std::cout << "Done" << std::endl;
+
+	// // int pthread_create(pthread_t * thread, const pthread_attr_t * attr, void * (*start_routine)(void *), void *arg);
 	return 0;
 }
