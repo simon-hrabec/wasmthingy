@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <optional>
+#include <vector>
 
 #define warn printf
 #define fatal printf
@@ -24,6 +25,9 @@ static bool warming_up_over = false;
 static pthread_barrier_t globalt_barr;
 static pthread_barrier_t align_barr;
 static timespec globalt;
+#ifdef GATHER_ALL
+static size_t data_expected_size = 0;
+#endif
 
 void* func(void* arg) {
     // clock_nanosleep(0, 0, nullptr, nullptr);
@@ -58,6 +62,9 @@ struct thread_statistics {
     long hist_overflow;
     long num_outliers;
     unsigned long smi_count;
+    #ifdef GATHER_ALL
+    std::vector<uint64_t> *data;
+    #endif
 };
 
 struct thread_parameters {
@@ -193,6 +200,15 @@ void print_statistics(thread_parameters *parameters, const int index) {
         statistics->act,
         statistics->cycles ? (long)(statistics->avg/statistics->cycles) : 0,
         statistics->max);
+
+    #ifdef GATHER_ALL
+    printf("T:%2d;(%5d), DATA", index, statistics->tid);
+
+    for(const auto val : *statistics->data) {
+        std::cout << ";" << val;
+    }
+    std::cout << std::endl;
+    #endif
 }
 
 
@@ -202,6 +218,9 @@ void* timer_thread(void *thread_parameters_void) {
     timespec now, next, interval, stop;
     sigset_t sigset;
     bool warmed_up = false;
+    #ifdef GATHER_ALL
+    statistics->data->reserve(data_expected_size);
+    #endif
 
     cpu_set_t mask;
     CPU_ZERO(&mask);
@@ -209,15 +228,19 @@ void* timer_thread(void *thread_parameters_void) {
     pthread_t thread = pthread_self();
 
     // does not work
+    #ifdef PRIO
     if (pthread_setaffinity_np(thread, sizeof(mask), &mask) == -1) {
         warn("Could not set CPU affinity to CPU #%d\n", parameters->cpu);
     }
+    #endif /* PRIO */
 
     interval.tv_sec = parameters->interval / USEC_PER_SEC;
     interval.tv_nsec = (parameters->interval % USEC_PER_SEC) * 1000;
 
     // does not work
+    #ifdef PRIO
     statistics->tid = gettid();
+    #endif /* PRIO */
 
     sigemptyset(&sigset);
     sigaddset(&sigset, parameters->signal);
@@ -228,9 +251,11 @@ void* timer_thread(void *thread_parameters_void) {
     scheduling_parameters.sched_priority = parameters->prio;
 
     // does not work
+    #ifdef PRIO
     if (setscheduler(0, parameters->policy, &scheduling_parameters)) {
         fatal("timerthread%d: failed to set priority to %d\n", parameters->cpu, parameters->prio);
     }
+    #endif /* PRIO */
 
     if (aligned || secaligned) {
         pthread_barrier_wait(&globalt_barr);
@@ -298,6 +323,9 @@ void* timer_thread(void *thread_parameters_void) {
         }
         statistics->avg += (double)difference;
         statistics->act = difference;
+        #ifdef GATHER_ALL
+        statistics->data->push_back(difference);
+        #endif
 
         statistics->cycles++;
 
@@ -317,6 +345,9 @@ void* timer_thread(void *thread_parameters_void) {
             statistics->avg = 0.0;
             statistics->threadstarted = 1;
             statistics->smi_count = 0;
+            #ifdef GATHER_ALL
+            statistics->data->resize(0);
+            #endif
             warmed_up = true;
         }
     }
@@ -342,7 +373,7 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
     }
 
     parameters->prio = 80;
-    parameters->policy = 1;
+    parameters->policy = SCHED_FIFO;
     parameters->clock = 1;
     parameters->mode = 1;
     parameters->timermode = 1;
@@ -358,6 +389,9 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
     statistics->avg = 0.0;
     statistics->threadstarted = 1;
     statistics->smi_count = 0;
+    #ifdef GATHER_ALL
+    statistics->data = new std::vector<uint64_t>();
+    #endif
 
     const int pthread_create_call_rv = pthread_create(&statistics->thread, &attr, timer_thread, parameters);
     if (pthread_create_call_rv) {
@@ -369,6 +403,9 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
 void main_loop(const int thread_count, const int running_time_us) {
     thread_parameters ** const parameters_array = new thread_parameters*[thread_count];
     thread_statistics ** const statistics_array = new thread_statistics*[thread_count];
+    #ifdef GATHER_ALL
+    data_expected_size = 2*running_time_us/200;
+    #endif
 
     for(int i = 0; i < thread_count; i++) {
         std::cout << "creating thread" << std::endl;
@@ -379,6 +416,11 @@ void main_loop(const int thread_count, const int running_time_us) {
     usleep(2'000'000);
     std::cout << "warmup finished" << std::endl;
     warming_up_over = true;
+    // #ifdef VERBOSE
+    // for(int i = 0; i < thread_count; i++) {
+    //     print_statistics(parameters_array[i], i);
+    // }
+    // #endif
     usleep(running_time_us);
     shutdown = true;
     usleep(100'000);

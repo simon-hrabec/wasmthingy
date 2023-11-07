@@ -1,0 +1,14 @@
+creating thread
+thread created
+creating thread
+thread created
+creating thread
+thread created
+creating thread
+thread created
+warmup finished
+T: 0 ( 2459) P:80 I:200 C: 159930 Min:      7 Act:   19 Avg:   20 Max:     420
+T: 1 ( 2460) P:80 I:200 C: 159916 Min:      4 Act:   20 Avg:   20 Max:     675
+T: 2 ( 2461) P:80 I:200 C: 159996 Min:      7 Act:   24 Avg:   19 Max:     423
+T: 3 ( 2462) P:80 I:200 C: 159994 Min:      9 Act:   19 Avg:   19 Max:     483
+Main loop finished
