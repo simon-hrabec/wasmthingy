@@ -126,6 +126,7 @@ static inline int64_t calcdiff(struct timespec t1, struct timespec t2) {
     return diff;
 }
 
+#ifdef PRIO
 static int raise_soft_prio(int policy, const struct sched_param *param)
 {
     int err;
@@ -168,7 +169,9 @@ static int raise_soft_prio(int policy, const struct sched_param *param)
 
     return err;
 }
+#endif
 
+#ifdef PRIO
 static int setscheduler(pid_t pid, int policy, const struct sched_param *param)
 {
     int err = 0;
@@ -186,6 +189,7 @@ try_again:
 
     return err;
 }
+#endif
 
 void print_statistics(thread_parameters *parameters, const int index) {
     thread_statistics *statistics = parameters->stats;
@@ -225,10 +229,10 @@ void* timer_thread(void *thread_parameters_void) {
     cpu_set_t mask;
     CPU_ZERO(&mask);
     CPU_SET(parameters->cpu, &mask);
-    pthread_t thread = pthread_self();
 
     // does not work
     #ifdef PRIO
+    pthread_t thread = pthread_self();
     if (pthread_setaffinity_np(thread, sizeof(mask), &mask) == -1) {
         warn("Could not set CPU affinity to CPU #%d\n", parameters->cpu);
     }
@@ -315,10 +319,10 @@ void* timer_thread(void *thread_parameters_void) {
         }
 
         const uint64_t difference = calcdiff(now, next);
-        if (difference < statistics->min) {
+        if (int64_t(difference) < statistics->min) {
             statistics->min = difference;
         }
-        if (difference > statistics->max) {
+        if (int64_t(difference) > statistics->max) {
             statistics->max = difference;
         }
         statistics->avg += (double)difference;
