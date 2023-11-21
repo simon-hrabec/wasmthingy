@@ -58,22 +58,37 @@ struct thread_instance_data {
 };
 
 #ifndef POSIX_SLEEP
-int64_t wake_up_latency() {
-	auto wakeup_time = std::chrono::high_resolution_clock::now() + interval;
-	std::this_thread::sleep_until(wakeup_time);
-	auto now_time = std::chrono::high_resolution_clock::now();
-	auto latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - wakeup_time).count();
+int64_t wake_up_latency(std::chrono::time_point<std::chrono::high_resolution_clock> &next_wakeup_time) {
+	std::this_thread::sleep_until(next_wakeup_time);
+	const auto now_time = std::chrono::high_resolution_clock::now();
+	const auto latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - next_wakeup_time).count();
+	while(next_wakeup_time < now_time) {
+		next_wakeup_time += interval;
+	}
 	return latency;
 }
-#elif
-// int64_t wake_up_latency() {
-// 	timespec now, next, interval_timespec;
+#else
+void add_interval(timespec &timestamp, std::chrono::microseconds interval_to_add) {
+	timestamp.tv_nsec += interval_to_add.count() * 1000;
+	while(timestamp.tv_nsec >= 1000000000) {
+		timestamp.tv_nsec -= 1000000000;
+		timestamp.tv_sec++;
+	}
+}
 
-// 	interval_timespec.tv_sec = interval / 1'000'000;
-//     interval_timespec.tv_nsec = (interval % 1'000'000) * 1'000;
+int64_t wake_up_latency(timespec &next_wakeup_time) {
+	clock_nanosleep(1, TIMER_ABSTIME, &next_wakeup_time, NULL);
+	timespec now_time;
+	clock_gettime(1, &now_time);
 
-// 	clock_nanosleep(parameters->clock, TIMER_ABSTIME, &next, NULL);
-// }	
+	const int64_t latency = (1000000 * (long long)((int) now_time.tv_sec - (int) next_wakeup_time.tv_sec)) + (((int) now_time.tv_nsec - (int) next_wakeup_time.tv_nsec) / 1000);
+
+    while(std::tie(now_time.tv_sec, now_time.tv_nsec) >  std::tie(next_wakeup_time.tv_sec, next_wakeup_time.tv_nsec)) {
+    	add_interval(next_wakeup_time, interval);
+    }
+
+    return latency;
+}
 #endif
 
 void print_statistics(const thread_instance_data& data) {
@@ -98,17 +113,32 @@ void* timer_thread(void* parameters) {
     sched_setscheduler(0, SCHED_FIFO, &scheduling_parameters);
 #endif
 
+#ifndef POSIX_SLEEP
+    std::chrono::time_point<std::chrono::high_resolution_clock> next_wakeup_time = std::chrono::high_resolution_clock::now() + interval;
+#else
+    timespec next_wakeup_time;
+    clock_gettime(1, &next_wakeup_time);
+    add_interval(next_wakeup_time, interval);
+#endif
+
 	while(!shutdown) {
 		if (!warmed_up && warming_up_over) {
 			thread_data.statistics.reset();
 			warmed_up = true;
+#ifndef POSIX_SLEEP
+    		next_wakeup_time = std::chrono::high_resolution_clock::now() + interval;
+#else
+    		add_interval(next_wakeup_time, interval);
+#endif
 		}
+
+
 
 		// auto wakeup_time = std::chrono::high_resolution_clock::now() + interval;
 		// std::this_thread::sleep_until(wakeup_time);
 		// auto now_time = std::chrono::high_resolution_clock::now();
 		// auto latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - wakeup_time).count();
-		const auto latency = wake_up_latency();
+		const auto latency = wake_up_latency(next_wakeup_time);
 
 		thread_data.statistics.data.push_back(latency);
 		// std::cout << "latency: " << latency << ", MIN: " << thread_data.statistics.minimum << ", MAX: " << thread_data.statistics.maximum << ", AVERAGE: " << double(thread_data.statistics.total)/thread_data.statistics.cycles << std::endl;

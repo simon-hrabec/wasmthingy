@@ -206,12 +206,12 @@ void print_statistics(thread_parameters *parameters, const int index) {
         statistics->max);
 
     #ifdef GATHER_ALL
-    printf("T:%2d;(%5d), DATA", index, statistics->tid);
+    // printf("T:%2d;(%5d), DATA", index, statistics->tid);
 
-    for(const auto val : *statistics->data) {
-        std::cout << ";" << val;
-    }
-    std::cout << std::endl;
+    // for(const auto val : *statistics->data) {
+    //     std::cout << ";" << val;
+    // }
+    // std::cout << std::endl;
     #endif
 }
 
@@ -431,6 +431,17 @@ void main_loop(const int thread_count, const int running_time_us) {
     for(int i = 0; i < thread_count; i++) {
         print_statistics(parameters_array[i], i);
     }
+
+    std::vector<int64_t> all_data;
+    for(int i = 0; i < thread_count; i++) {
+        all_data.insert(all_data.begin(), parameters_array[i]->stats->data->begin(), parameters_array[i]->stats->data->end());
+    }
+
+    std::cout << ", DATA";
+    for(const auto num : all_data) {
+        std::cout << ";" << num;
+    }
+    std::cout << std::endl;
 }
 
 int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default_value) {
