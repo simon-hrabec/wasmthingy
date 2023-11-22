@@ -5,8 +5,11 @@
 
 OUTPUT_DIR="${1:-output}"
 PDF_NAME="${2:-graphs.pdf}"
+TEST_TIME_SEC="${3:-4}"
+MICRO_TIME=$((TEST_TIME_SEC * 1000000))
 
-WASI_SDK_CLANG='/home/simon/repo/wasi-sdk/dist/wasi-sdk-20.20g2393be41c8df/bin/clang++ --sysroot=/home/simon/repo/wasi-sdk/dist/wasi-sdk-20.20g2393be41c8df/share/wasi-sysroot'
+WASI_SDK_CLANG='/home/simon/repo/wasi-sdk/dist/wasi-sdk-20.20g2393be41c8df/bin/clang++'
+WASI_SDK_SYSROOT='--sysroot=/home/simon/repo/wasi-sdk/dist/wasi-sdk-20.20g2393be41c8df/share/wasi-sysroot'
 WASMTIME='/home/simon/.wasmtime/bin/wasmtime'
 WASMER='/home/simon/.wasmer/bin/wasmer'
 PROGRAM_CODE='code/rewrite.cpp'
@@ -19,11 +22,12 @@ mkdir -p bin
 g++ -Wall -pedantic -pthread -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_no_prio
 g++ -Wall -pedantic -pthread -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_with_prio_cpp
 g++ -Wall -pedantic -pthread -DGATHER_ALL -DPRIO "${OLD_CODE}" -o bin/latency_with_prio_posix
-emcc -pthread -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_emcc.js
-${WASI_SDK_CLANG} -pthread --target=wasm32-wasi-threads -fno-exceptions -Wl,--import-memory,--export-memory,--max-memory=67108864 "${PROGRAM_CODE}" -o bin/latency.wasm
-
-TEST_TIME_SEC=4
-MICRO_TIME=$((TEST_TIME_SEC * 1000000))
+emcc -pthread -DGATHER_ALL -sINITIAL_MEMORY=268435456 "${PROGRAM_CODE}" -o bin/latency_emcc.js
+if [ -f "${WASI_SDK_CLANG}" ]; then
+   ${WASI_SDK_CLANG} ${WASI_SDK_SYSROOT} -pthread --target=wasm32-wasi-threads -fno-exceptions -Wl,--import-memory,--export-memory,--max-memory=67108864 "${PROGRAM_CODE}" -o bin/latency.wasm
+else
+   cp latency.wasm bin/latency.wasm
+fi
 
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
