@@ -2,6 +2,7 @@
 
 # $1 = OUTPUT DIR
 # $2 = GRAPH PDF NAME
+# $2 = TEST TIME - SECONDS
 
 OUTPUT_DIR="${1:-output}"
 PDF_NAME="${2:-graphs.pdf}"
@@ -14,6 +15,7 @@ WASMTIME='/home/simon/.wasmtime/bin/wasmtime'
 WASMER='/home/simon/.wasmer/bin/wasmer'
 PROGRAM_CODE='code/rewrite.cpp'
 OLD_CODE='code/latency.cpp'
+NODE='node'
 
 [[ -f scripts/mainscript-custom.sh ]] && source scripts/mainscript-custom.sh
 
@@ -34,7 +36,7 @@ mkdir -p "${OUTPUT_DIR}"
 sudo scripts/runscript.sh bin/latency_no_prio ${MICRO_TIME} "${OUTPUT_DIR}/out_no_prio" "${OUTPUT_DIR}/data_no_prio" 4
 sudo scripts/runscript.sh bin/latency_with_prio_cpp ${MICRO_TIME} "${OUTPUT_DIR}/out_with_prio_cpp" "${OUTPUT_DIR}/data_with_prio_cpp" 4
 sudo scripts/runscript.sh bin/latency_with_prio_posix ${MICRO_TIME} "${OUTPUT_DIR}/out_with_prio_posix" "${OUTPUT_DIR}/data_with_prio_posix" 4
-sudo scripts/runscript.sh "node bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}/out_node" "${OUTPUT_DIR}/data_node" 4
+sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}/out_node" "${OUTPUT_DIR}/data_node" 4
 sudo scripts/runscript.sh "${WASMTIME} --wasm-features=threads --wasi-modules=experimental-wasi-threads bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmtime" "${OUTPUT_DIR}/data_wasmtime" 4
 sudo scripts/runscript.sh "${WASMER} bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmer" "${OUTPUT_DIR}/data_wasmer" 4
 
