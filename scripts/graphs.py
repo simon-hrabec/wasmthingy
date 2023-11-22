@@ -2,15 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import genfromtxt
 from matplotlib.backends.backend_pdf import PdfPages
+import sys
 
-pdf = PdfPages('rp4.pdf')
+data_dir = sys.argv[1]
+output_pdf = sys.argv[2]
 
-data_node = genfromtxt('output/data_node', delimiter=';')
-data_no_prio = genfromtxt('output/data_no_prio', delimiter=';')
-data_with_prio_cpp = genfromtxt('output/data_with_prio_cpp', delimiter=';')
-data_with_prio_posix = genfromtxt('output/data_with_prio_posix', delimiter=';')
-data_wasmtime = genfromtxt('output/data_wasmtime', delimiter=';')
-data_wasmer = genfromtxt('output/data_wasmer', delimiter=';')
+pdf = PdfPages(output_pdf)
+
+data_node = genfromtxt(data_dir+'/data_node', delimiter=';')
+data_no_prio = genfromtxt(data_dir+'/data_no_prio', delimiter=';')
+data_with_prio_cpp = genfromtxt(data_dir+'/data_with_prio_cpp', delimiter=';')
+data_with_prio_posix = genfromtxt(data_dir+'/data_with_prio_posix', delimiter=';')
+data_wasmtime = genfromtxt(data_dir+'/data_wasmtime', delimiter=';')
+data_wasmer = genfromtxt(data_dir+'/data_wasmer', delimiter=';')
 
 print(data_node)
 print(data_node.size)
@@ -31,7 +35,7 @@ axs[0, 1].hist(data_no_prio, range=(0,200), bins=100)
 axs[0, 1].set_title('C (no prio)')
 
 axs[0, 2].hist(data_with_prio_cpp, range=(0,200), bins=100)
-axs[0, 2].set_title('C (with prio)')
+axs[0, 2].set_title('C (with prio cpp)')
 
 axs[1, 0].hist(data_wasmtime, range=(0,200), bins=100)
 axs[1, 0].set_title('wasmtime')
@@ -40,7 +44,7 @@ axs[1, 1].hist(data_wasmer, range=(0,2500), bins=100)
 axs[1, 1].set_title('wasmer')
 
 axs[1, 2].hist(data_with_prio_posix, range=(0,200), bins=100)
-axs[1, 2].set_title('C (with prio)')
+axs[1, 2].set_title('C (with prio posix)')
 
 # axs[1, 2].axis('off')
 

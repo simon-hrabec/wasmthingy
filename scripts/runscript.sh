@@ -2,8 +2,9 @@
 
 # $1 = PROGRAM NAME
 # $2 = TEST DURATION
-# $3 = OUTPUT FILE NAME
-# $4 = CORE COUNT
+# $3 = OUTPUT FILE NAME STAT
+# $4 = OUTPUT FILE NAME DATA
+# $5 = CORE COUNT
 
 TEMPFILE=$(mktemp)
 DEFAULT_DURATION="30000000"
@@ -14,6 +15,9 @@ POSSIBLEOUT_DATA=$(mktemp)
 OUTFILE_STATS=${3:-${POSSIBLEOUT_STATS}}
 OUTFILE_DATA=${4:-${POSSIBLEOUT_DATA}}
 CORES=${5:-"4"}
+
+[[ -f scripts/runscript-custom.sh ]] && source scripts/runscript-custom.sh
+
 echo "Starting latency measure \"${PROGRAM}\" test for ${DURATION}us ($((DURATION/1000000))s)."
 echo "Parsed data stored in $(realpath ${OUTFILE_STATS})."
 echo "Raw stored in $(realpath ${OUTFILE_DATA})"
