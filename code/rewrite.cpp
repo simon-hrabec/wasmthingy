@@ -16,9 +16,9 @@
 #include <vector>
 
 std::chrono::microseconds interval{200};
-static size_t data_expected_size = 0;
 static bool shutdown = false;
 static bool warming_up_over = false;
+constexpr int latency_array_size = 3000;
 
 int64_t parse_nth_arg_as_int(int argc, char const *argv[], int position, int64_t default_value) {
     if (argc <= position) {
@@ -35,14 +35,16 @@ int64_t parse_nth_arg_as_int(int argc, char const *argv[], int position, int64_t
 }
 
 struct thread_instance_statistics {
-	std::vector<int64_t> data;
+	std::array<int64_t, latency_array_size> latency_data;
+	std::vector<int64_t> additional_latencies;
 	int64_t minimum;
 	int64_t maximum;
 	int64_t total;
 	int64_t cycles;
 
 	void reset() {
-		data.resize(0);
+		latency_data.fill(0);
+		additional_latencies.resize(0);
     	minimum = std::numeric_limits<decltype(minimum)>::max();
     	maximum = 0;
     	total = 0;
@@ -98,7 +100,7 @@ void print_statistics(const thread_instance_data& data) {
 void* timer_thread(void* parameters) {
 	thread_instance_data& thread_data = *reinterpret_cast<thread_instance_data*>(parameters);
 	std::cout << "Timer thread " << thread_data.thread_id << " started" << std::endl;
-	thread_data.statistics.data.reserve(data_expected_size);
+	thread_data.statistics.additional_latencies.reserve(2000);
 	thread_data.statistics.reset();
 
 	bool warmed_up = false;
@@ -132,16 +134,13 @@ void* timer_thread(void* parameters) {
 #endif
 		}
 
-
-
-		// auto wakeup_time = std::chrono::high_resolution_clock::now() + interval;
-		// std::this_thread::sleep_until(wakeup_time);
-		// auto now_time = std::chrono::high_resolution_clock::now();
-		// auto latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - wakeup_time).count();
 		const auto latency = wake_up_latency(next_wakeup_time);
 
-		thread_data.statistics.data.push_back(latency);
-		// std::cout << "latency: " << latency << ", MIN: " << thread_data.statistics.minimum << ", MAX: " << thread_data.statistics.maximum << ", AVERAGE: " << double(thread_data.statistics.total)/thread_data.statistics.cycles << std::endl;
+		if (latency < latency_array_size) {
+			thread_data.statistics.latency_data[latency]++;
+		} else {
+			thread_data.statistics.additional_latencies.push_back(latency);
+		}
 
 		if (latency < thread_data.statistics.minimum) {
 			thread_data.statistics.minimum = latency;
@@ -153,7 +152,6 @@ void* timer_thread(void* parameters) {
 
 		thread_data.statistics.total += latency;
 		thread_data.statistics.cycles++;
-		// std::cout << "latency: " << latency << ", MIN: " << thread_data.statistics.minimum << ", MAX: " << thread_data.statistics.maximum << ", AVERAGE: " << double(thread_data.statistics.total)/thread_data.statistics.cycles << std::endl;
 	}
 	std::cout << "Timer thread " << thread_data.thread_id << " shutting down" << std::endl;
 	return nullptr;
@@ -180,7 +178,6 @@ thread_instance_data create_timer_thread(std::vector<thread_instance_data> &thre
 
 void main_loop(const int thread_count, std::chrono::microseconds run_for) {
 	std::vector<thread_instance_data> thread_data(thread_count);
-	data_expected_size = 2*run_for/interval;
 
     for(int i = 0; i < thread_count; i++) {
         std::cout << "creating thread" << std::endl;
@@ -205,26 +202,25 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
     	print_statistics(thread_data[i]);
     }
 
-    std::vector<int64_t> all_data;
     for(int i = 0; i < thread_count; i++) {
-    	all_data.insert(all_data.begin(), thread_data[i].statistics.data.begin(), thread_data[i].statistics.data.end());
+    	std::cout << i << ", LATENCY_DATA: ";
+    	for(int j = 0; j < latency_array_size; j++) {
+    		for(int k = 0; k < thread_data[i].statistics.latency_data[j]; k++) {
+    			std::cout << ";" << j << std::flush;
+    		}
+    	}
+    	for(const auto num : thread_data[i].statistics.additional_latencies) {
+    		std::cout << ";" << num << std::flush;
+    	}
     }
 
-    std::cout << ", DATA";
-    for(const auto num : all_data) {
-    	std::cout << ";" << num;
-    }
     std::cout << std::endl;
 }
 
 int main(int argc, char const *argv[]){
     const int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
     const std::chrono::microseconds run_for_us = std::chrono::microseconds{parse_nth_arg_as_int(argc, argv, 2, 30'000'000)};
-    // std::cout << "Max CPUS: " << max_cpus << std::endl;
-    // if (max_cpus < threads_to_use) {
-    // 	std::cout << "Requested too many threads: " << threads_to_use << std::endl;
-    // 	exit(1);
-    // }
+
     std::cout << "Creating " << threads_to_use << " threads" << std::endl;
     main_loop(threads_to_use, run_for_us);
     std::cout << "Main loop finished" << std::endl;

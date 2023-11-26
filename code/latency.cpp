@@ -432,16 +432,12 @@ void main_loop(const int thread_count, const int running_time_us) {
         print_statistics(parameters_array[i], i);
     }
 
-    std::vector<int64_t> all_data;
     for(int i = 0; i < thread_count; i++) {
-        all_data.insert(all_data.begin(), parameters_array[i]->stats->data->begin(), parameters_array[i]->stats->data->end());
+        std::cout << i << ", LATENCY_DATA: ";
+        for(const auto num : *parameters_array[i]->stats->data) {
+            std::cout << ";" << num;
+        }
     }
-
-    std::cout << ", DATA";
-    for(const auto num : all_data) {
-        std::cout << ";" << num;
-    }
-    std::cout << std::endl;
 }
 
 int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default_value) {
@@ -464,29 +460,5 @@ int main(int argc, char const *argv[]){
     main_loop(threads_to_use, run_for_us);
     std::cout << "Main loop finished" << std::endl;
 
-
-
-	// constexpr int thread_count = 5;
-	// std::array<pthread_t, thread_count> thread_ids;
-
- //    std::cout << "Starting thread creation" << std::endl;
-
-	// for(int i = 0; i < thread_count; i++) {
-	// 	pthread_create(&thread_ids[i], NULL, &func, (&thread_ids[0])+i);
- //        std::cout << "Created thread: " << i << ", " << thread_ids[i] << ", or the same: " << *((&thread_ids[0])+i) << std::endl;
- //        // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-	// }
-
- //    std::cout << "Created all threads" << std::endl;
-    
- //    for(int i = 0; i < thread_count; i++) {
- //    	pthread_join(thread_ids[i], NULL); 
- //    }
-
- //    std::cout << "All thread exited" << std::endl;
- //    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
- //    std::cout << "Done" << std::endl;
-
-	// // int pthread_create(pthread_t * thread, const pthread_attr_t * attr, void * (*start_routine)(void *), void *arg);
 	return 0;
 }
