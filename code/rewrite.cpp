@@ -15,10 +15,13 @@
 #include <numeric>
 #include <vector>
 
-std::chrono::microseconds interval{200};
+std::chrono::microseconds interval{3000};
 static bool shutdown = false;
 static bool warming_up_over = false;
 constexpr int latency_array_size = 3000;
+constexpr int jitter_array_size = 4000;
+constexpr int jitter_offset = 4000/2;
+
 
 int64_t parse_nth_arg_as_int(int argc, char const *argv[], int position, int64_t default_value) {
     if (argc <= position) {
@@ -37,6 +40,8 @@ int64_t parse_nth_arg_as_int(int argc, char const *argv[], int position, int64_t
 struct thread_instance_statistics {
 	std::array<int64_t, latency_array_size> latency_data;
 	std::vector<int64_t> additional_latencies;
+	std::array<int64_t, jitter_array_size> jitter_data;
+	std::vector<int64_t> additional_jitter;
 	int64_t minimum;
 	int64_t maximum;
 	int64_t total;
@@ -44,7 +49,9 @@ struct thread_instance_statistics {
 
 	void reset() {
 		latency_data.fill(0);
+		jitter_data.fill(0);
 		additional_latencies.resize(0);
+		additional_jitter.resize(0);
     	minimum = std::numeric_limits<decltype(minimum)>::max();
     	maximum = 0;
     	total = 0;
@@ -60,14 +67,17 @@ struct thread_instance_data {
 };
 
 #ifndef POSIX_SLEEP
-int64_t wake_up_latency(std::chrono::time_point<std::chrono::high_resolution_clock> &next_wakeup_time) {
+std::pair<int64_t, int64_t> wake_up_latency(std::chrono::time_point<std::chrono::high_resolution_clock> &previous_wakeup_time, std::chrono::time_point<std::chrono::high_resolution_clock> &next_wakeup_time) {
 	std::this_thread::sleep_until(next_wakeup_time);
 	const auto now_time = std::chrono::high_resolution_clock::now();
-	const auto latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - next_wakeup_time).count();
+	const int64_t latency = std::chrono::duration_cast<std::chrono::microseconds>(now_time - next_wakeup_time).count();
+    const int64_t jitter = std::chrono::duration_cast<std::chrono::microseconds>(now_time - previous_wakeup_time - interval).count();
+
+    previous_wakeup_time = now_time;
 	while(next_wakeup_time < now_time) {
 		next_wakeup_time += interval;
 	}
-	return latency;
+	return {latency, jitter};
 }
 #else
 void add_interval(timespec &timestamp, std::chrono::microseconds interval_to_add) {
@@ -78,18 +88,21 @@ void add_interval(timespec &timestamp, std::chrono::microseconds interval_to_add
 	}
 }
 
-int64_t wake_up_latency(timespec &next_wakeup_time) {
+std::pair<int64_t, int64_t> wake_up_latency(timespec &previous_wakeup_time, timespec &next_wakeup_time) {
 	clock_nanosleep(1, TIMER_ABSTIME, &next_wakeup_time, NULL);
 	timespec now_time;
 	clock_gettime(1, &now_time);
 
 	const int64_t latency = (1000000 * (long long)((int) now_time.tv_sec - (int) next_wakeup_time.tv_sec)) + (((int) now_time.tv_nsec - (int) next_wakeup_time.tv_nsec) / 1000);
+    const int64_t jitter = (1000000 * (long long)((int) now_time.tv_sec - (int) previous_wakeup_time.tv_sec)) + (((int) now_time.tv_nsec - (int) previous_wakeup_time.tv_nsec) / 1000);
+
+    previous_wakeup_time = now_time;
 
     while(std::tie(now_time.tv_sec, now_time.tv_nsec) >  std::tie(next_wakeup_time.tv_sec, next_wakeup_time.tv_nsec)) {
     	add_interval(next_wakeup_time, interval);
     }
 
-    return latency;
+    return {latency, jitter-interval};
 }
 #endif
 
@@ -104,6 +117,7 @@ void* timer_thread(void* parameters) {
 	thread_data.statistics.reset();
 
 	bool warmed_up = false;
+	// int64_t previous_latency = 0;
 
 #ifdef POSIX_PRORITY_SETUP
 	const int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
@@ -117,9 +131,12 @@ void* timer_thread(void* parameters) {
 
 #ifndef POSIX_SLEEP
     std::chrono::time_point<std::chrono::high_resolution_clock> next_wakeup_time = std::chrono::high_resolution_clock::now() + interval;
+    std::chrono::time_point<std::chrono::high_resolution_clock> previous_wakeup_time = next_wakeup_time;
 #else
     timespec next_wakeup_time;
+    timespec previous_wakeup_time;
     clock_gettime(1, &next_wakeup_time);
+    previous_wakeup_time = next_wakeup_time;
     add_interval(next_wakeup_time, interval);
 #endif
 
@@ -134,12 +151,19 @@ void* timer_thread(void* parameters) {
 #endif
 		}
 
-		const auto latency = wake_up_latency(next_wakeup_time);
+		const auto [latency, jitter] = wake_up_latency(previous_wakeup_time, next_wakeup_time);
 
 		if (latency < latency_array_size) {
 			thread_data.statistics.latency_data[latency]++;
 		} else {
 			thread_data.statistics.additional_latencies.push_back(latency);
+		}
+
+        const auto jitter_encoded = jitter + jitter_offset;
+		if (jitter_encoded >= 0 && jitter_encoded < jitter_array_size) {
+			thread_data.statistics.jitter_data[jitter_encoded]++;
+		} else {
+			thread_data.statistics.additional_jitter.push_back(jitter);
 		}
 
 		if (latency < thread_data.statistics.minimum) {
@@ -190,6 +214,7 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
     warming_up_over = true;
     std::this_thread::sleep_for(run_for);
     shutdown = true;
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     for(int i = 0; i < thread_count; i++) {
     	std::cout << "joining thread " << i << std::endl;
@@ -213,7 +238,19 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
     		std::cout << ";" << num << std::flush;
     	}
     }
+    std::cout << std::endl;
 
+    for(int i = 0; i < thread_count; i++) {
+    	std::cout << i << ", JITTER_DATA: ";
+    	for(int j = 0; j < jitter_array_size; j++) {
+    		for(int k = 0; k < thread_data[i].statistics.jitter_data[j]; k++) {
+    			std::cout << ";" << (j-jitter_offset) << std::flush;
+    		}
+    	}
+    	for(const auto num : thread_data[i].statistics.additional_jitter) {
+    		std::cout << ";" << num << std::flush;
+    	}
+    }
     std::cout << std::endl;
 }
 

@@ -4,9 +4,11 @@
 # $2 = GRAPH PDF NAME
 # $2 = TEST TIME - SECONDS
 
+DEFAULT_TEST_TIME_SEC="8"
+
 OUTPUT_DIR="${1:-output}"
 PDF_NAME="${2:-graphs.pdf}"
-TEST_TIME_SEC="${3:-4}"
+TEST_TIME_SEC="${3:-${DEFAULT_TEST_TIME_SEC}}"
 MICRO_TIME=$((TEST_TIME_SEC * 1000000))
 
 ARCH="$(dpkg --print-architecture)"
@@ -46,15 +48,15 @@ fi
 
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
-sudo scripts/runscript.sh bin/latency_no_prio ${MICRO_TIME} "${OUTPUT_DIR}/out_no_prio" "${OUTPUT_DIR}/data_no_prio" 4
-sudo scripts/runscript.sh bin/latency_with_prio_cpp ${MICRO_TIME} "${OUTPUT_DIR}/out_with_prio_cpp" "${OUTPUT_DIR}/data_with_prio_cpp" 4
-sudo scripts/runscript.sh bin/latency_with_prio_posix ${MICRO_TIME} "${OUTPUT_DIR}/out_with_prio_posix" "${OUTPUT_DIR}/data_with_prio_posix" 4
-sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}/out_node" "${OUTPUT_DIR}/data_node" 4
-sudo scripts/runscript.sh "${WASMTIME} --wasm-features=threads --wasi-modules=experimental-wasi-threads bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmtime" "${OUTPUT_DIR}/data_wasmtime" 4
-sudo scripts/runscript.sh "${WASMER} --singlepass bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmer_singlepass" "${OUTPUT_DIR}/data_wasmer_singlepass" 4
-sudo scripts/runscript.sh "${WASMER} --cranelift bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmer_cranelift" "${OUTPUT_DIR}/data_wasmer_cranelift" 4
-sudo scripts/runscript.sh "${WASMER} --llvm bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}/out_wasmer_llvm" "${OUTPUT_DIR}/data_wasmer_llvm" 4
-sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}/out_wamr" "${OUTPUT_DIR}/data_wamr" 4
+sudo scripts/runscript.sh bin/latency_no_prio ${MICRO_TIME} "${OUTPUT_DIR}" "no_prio" 4
+sudo scripts/runscript.sh bin/latency_with_prio_cpp ${MICRO_TIME} "${OUTPUT_DIR}" "with_prio_cpp" 4
+sudo scripts/runscript.sh bin/latency_with_prio_posix ${MICRO_TIME} "${OUTPUT_DIR}" "with_prio_posix" 4
+sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}" "node" 4
+sudo scripts/runscript.sh "${WASMTIME} --wasm-features=threads --wasi-modules=experimental-wasi-threads bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmtime" 4
+sudo scripts/runscript.sh "${WASMER} --singlepass bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_singlepass" 4
+sudo scripts/runscript.sh "${WASMER} --cranelift bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_cranelift" 4
+sudo scripts/runscript.sh "${WASMER} --llvm bin/latency.wasm" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_llvm" 4
+sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wamr" 4
 
 mkdir -p graphs
 python scripts/graphs.py "${OUTPUT_DIR}" "graphs/${PDF_NAME}"

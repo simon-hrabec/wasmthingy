@@ -14,10 +14,10 @@
 #define fatal printf
 #define USEC_PER_SEC 1000000
 #define NSEC_PER_SEC 1000000000
+#define INTERVAL 3000
 // #define gettid() syscall(__NR_gettid)
 
 static bool shutdown = false;
-static int duration = 0;
 static int aligned = 0;
 static int secaligned = 0;
 static int offset = 0;
@@ -63,7 +63,8 @@ struct thread_statistics {
     long num_outliers;
     unsigned long smi_count;
     #ifdef GATHER_ALL
-    std::vector<uint64_t> *data;
+    std::vector<int64_t> *latency_data;
+    std::vector<int64_t> *jitter_data;
     #endif
 };
 
@@ -219,11 +220,12 @@ void print_statistics(thread_parameters *parameters, const int index) {
 void* timer_thread(void *thread_parameters_void) {
     thread_parameters* const parameters = reinterpret_cast<thread_parameters*>(thread_parameters_void);
     thread_statistics* const statistics = parameters->stats;
-    timespec now, next, interval, stop;
+    timespec now, prev_now, next, interval;
     sigset_t sigset;
     bool warmed_up = false;
     #ifdef GATHER_ALL
-    statistics->data->reserve(data_expected_size);
+    statistics->latency_data->reserve(data_expected_size);
+    statistics->jitter_data->reserve(data_expected_size);
     #endif
 
     cpu_set_t mask;
@@ -288,16 +290,11 @@ void* timer_thread(void *thread_parameters_void) {
         clock_gettime(parameters->clock, &now);
     }
 
+    prev_now = now;
     next = now;
     next.tv_sec += interval.tv_sec;
     next.tv_nsec += interval.tv_nsec;
     timespec_normalize(next);
-
-    if (duration) {
-        memset(&stop, 0, sizeof(stop)); /* grrr */
-        stop = now;
-        stop.tv_sec += duration;
-    }
 
     statistics->threadstarted++;
 
@@ -310,6 +307,7 @@ void* timer_thread(void *thread_parameters_void) {
             break;
         }
 
+        prev_now = now;
         const int clock_gettime_rv = clock_gettime(parameters->clock, &now);
         if (clock_gettime_rv != 0) {
             if (clock_gettime_rv != EINTR) {
@@ -318,17 +316,21 @@ void* timer_thread(void *thread_parameters_void) {
             break;
         }
 
-        const uint64_t difference = calcdiff(now, next);
-        if (int64_t(difference) < statistics->min) {
-            statistics->min = difference;
+        const int64_t latency = calcdiff(now, next);
+        if (int64_t(latency) < statistics->min) {
+            statistics->min = latency;
         }
-        if (int64_t(difference) > statistics->max) {
-            statistics->max = difference;
+        if (int64_t(latency) > statistics->max) {
+            statistics->max = latency;
         }
-        statistics->avg += (double)difference;
-        statistics->act = difference;
+        statistics->avg += (double)latency;
+        statistics->act = latency;
+
+        const int64_t difference = calcdiff(now, prev_now)-INTERVAL;
+
         #ifdef GATHER_ALL
-        statistics->data->push_back(difference);
+        statistics->latency_data->push_back(latency);
+        statistics->jitter_data->push_back(difference);
         #endif
 
         statistics->cycles++;
@@ -350,7 +352,8 @@ void* timer_thread(void *thread_parameters_void) {
             statistics->threadstarted = 1;
             statistics->smi_count = 0;
             #ifdef GATHER_ALL
-            statistics->data->resize(0);
+            statistics->latency_data->resize(0);
+            statistics->jitter_data->resize(0);
             #endif
             warmed_up = true;
         }
@@ -382,7 +385,7 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
     parameters->mode = 1;
     parameters->timermode = 1;
     parameters->signal = 14;
-    parameters->interval = 200;
+    parameters->interval = INTERVAL;
     parameters->max_cycles = 0;
     parameters->stats = statistics;
     parameters->node = -1;
@@ -394,7 +397,8 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
     statistics->threadstarted = 1;
     statistics->smi_count = 0;
     #ifdef GATHER_ALL
-    statistics->data = new std::vector<uint64_t>();
+    statistics->latency_data = new std::vector<int64_t>();
+    statistics->jitter_data = new std::vector<int64_t>();
     #endif
 
     const int pthread_create_call_rv = pthread_create(&statistics->thread, &attr, timer_thread, parameters);
@@ -408,7 +412,7 @@ void main_loop(const int thread_count, const int running_time_us) {
     thread_parameters ** const parameters_array = new thread_parameters*[thread_count];
     thread_statistics ** const statistics_array = new thread_statistics*[thread_count];
     #ifdef GATHER_ALL
-    data_expected_size = 2*running_time_us/200;
+    data_expected_size = 2*running_time_us/INTERVAL;
     #endif
 
     for(int i = 0; i < thread_count; i++) {
@@ -434,10 +438,19 @@ void main_loop(const int thread_count, const int running_time_us) {
 
     for(int i = 0; i < thread_count; i++) {
         std::cout << i << ", LATENCY_DATA: ";
-        for(const auto num : *parameters_array[i]->stats->data) {
+        for(const auto num : *parameters_array[i]->stats->latency_data) {
             std::cout << ";" << num;
         }
     }
+    std::cout << std::endl;
+
+    for(int i = 0; i < thread_count; i++) {
+        std::cout << i << ", JITTER_DATA: ";
+        for(const auto num : *parameters_array[i]->stats->jitter_data) {
+            std::cout << ";" << num;
+        }
+    }
+    std::cout << std::endl;
 }
 
 int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default_value) {
