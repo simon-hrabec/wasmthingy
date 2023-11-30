@@ -255,8 +255,13 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
 }
 
 int main(int argc, char const *argv[]){
-    const int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
-    const std::chrono::microseconds run_for_us = std::chrono::microseconds{parse_nth_arg_as_int(argc, argv, 2, 30'000'000)};
+    int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
+    std::chrono::microseconds run_for_us = std::chrono::microseconds{parse_nth_arg_as_int(argc, argv, 2, 30'000'000)};
+
+    if (threads_to_use > 1000) {
+        threads_to_use = parse_nth_arg_as_int(argc, argv, 0, 4);
+        run_for_us = std::chrono::microseconds{parse_nth_arg_as_int(argc, argv, 1, 30'000'000)};
+    }
 
     std::cout << "Creating " << threads_to_use << " threads" << std::endl;
     main_loop(threads_to_use, run_for_us);

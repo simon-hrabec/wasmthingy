@@ -470,6 +470,7 @@ int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default
 int main(int argc, char const *argv[]){
     const int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
     const int run_for_us = parse_nth_arg_as_int(argc, argv, 2, 30'000'000);
+
     main_loop(threads_to_use, run_for_us);
     std::cout << "Main loop finished" << std::endl;
 
