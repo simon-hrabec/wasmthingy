@@ -35,12 +35,15 @@ else
    cp artifacts/latency.wasm bin/latency.wasm
 fi
 if [ -f "${WAMRC}" ]; then
+	echo "COMPILING"
 	${WAMRC} --enable-multi-thread -o bin/latency.aot bin/latency.wasm
+	${WAMRC} --enable-multi-thread --target=aarch64v8 -o artifacts/latency-arm.aot bin/latency.wasm
+	
 else
 	cp artifacts/latency-arm.aot bin/latency.aot
 fi
 
-if [[ "$a" == "arm64" ]]; then
+if [[ "$ARCH" == "arm64" ]]; then
 	WAMR="artifacts/iwasm-arm"
 else
 	WAMR="artifacts/iwasm-x86"
