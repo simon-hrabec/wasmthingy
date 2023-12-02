@@ -101,11 +101,11 @@ jitter_arr = [
 
 labels=['no_prio', 'with_prio_cpp', 'with_prio_posix', 'node', 'wasmtime', 'wamr', 'wasmer_singlepass', 'wasmer_cranelift', 'wasmer_llvm']
 
-print_histograms(latency_arr, 'latency_hist')
-print_histograms(jitter_arr, 'jitter_hist')
+print_histograms(latency_arr, 'graphs/latency_hist')
+print_histograms(jitter_arr, 'graphs/jitter_hist')
 
-print_boxplots(latency_data, labels, 'latency_box')
-print_boxplots(jitter_data, labels, 'jitter_box')
+print_boxplots(latency_data, labels, 'graphs/latency_box')
+print_boxplots(jitter_data, labels, 'graphs/jitter_box')
 
 pdf.close()
 print('Graph generated: ' + output_pdf)

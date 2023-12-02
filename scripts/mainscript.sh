@@ -4,7 +4,7 @@
 # $2 = GRAPH PDF NAME
 # $2 = TEST TIME - SECONDS
 
-DEFAULT_TEST_TIME_SEC="8"
+DEFAULT_TEST_TIME_SEC="4"
 
 OUTPUT_DIR="${1:-output}"
 PDF_NAME="${2:-graphs.pdf}"
@@ -35,10 +35,8 @@ else
    cp artifacts/latency.wasm bin/latency.wasm
 fi
 if [ -f "${WAMRC}" ]; then
-	echo "COMPILING"
 	${WAMRC} --enable-multi-thread -o bin/latency.aot bin/latency.wasm
 	${WAMRC} --enable-multi-thread --target=aarch64v8 -o artifacts/latency-arm.aot bin/latency.wasm
-	
 else
 	cp artifacts/latency-arm.aot bin/latency.aot
 fi
@@ -63,6 +61,3 @@ sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}
 
 mkdir -p graphs
 python scripts/graphs.py "${OUTPUT_DIR}" "graphs/${PDF_NAME}"
-
-rm hist.pdf
-rm hist2.pdf

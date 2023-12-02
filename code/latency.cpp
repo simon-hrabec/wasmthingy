@@ -441,16 +441,16 @@ void main_loop(const int thread_count, const int running_time_us) {
         for(const auto num : *parameters_array[i]->stats->latency_data) {
             std::cout << ";" << num;
         }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
     for(int i = 0; i < thread_count; i++) {
         std::cout << i << ", JITTER_DATA: ";
         for(const auto num : *parameters_array[i]->stats->jitter_data) {
             std::cout << ";" << num;
         }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
 int parse_nth_arg_as_int(int argc, char const *argv[], int position, int default_value) {

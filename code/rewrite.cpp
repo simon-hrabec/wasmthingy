@@ -237,8 +237,8 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
     	for(const auto num : thread_data[i].statistics.additional_latencies) {
     		std::cout << ";" << num << std::flush;
     	}
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
     for(int i = 0; i < thread_count; i++) {
     	std::cout << i << ", JITTER_DATA: ";
@@ -250,11 +250,15 @@ void main_loop(const int thread_count, std::chrono::microseconds run_for) {
     	for(const auto num : thread_data[i].statistics.additional_jitter) {
     		std::cout << ";" << num << std::flush;
     	}
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
 int main(int argc, char const *argv[]){
+    std::cout << "argc: " << argc << std::endl;
+    for(int i = 0; i < argc; i++) {
+        std::cout << "argv[" << i << "]: " << argv[i] << std::endl;
+    }
     int threads_to_use = parse_nth_arg_as_int(argc, argv, 1, 4);
     std::chrono::microseconds run_for_us = std::chrono::microseconds{parse_nth_arg_as_int(argc, argv, 2, 30'000'000)};
 
