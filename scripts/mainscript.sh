@@ -29,11 +29,12 @@ g++ -Wall -pedantic -pthread -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_no_pr
 g++ -Wall -pedantic -pthread -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_with_prio_cpp
 g++ -Wall -pedantic -pthread -DGATHER_ALL -DPRIO "${OLD_CODE}" -o bin/latency_with_prio_posix
 emcc -pthread -DGATHER_ALL -sINITIAL_MEMORY=268435456 "${PROGRAM_CODE}" -o bin/latency_emcc.js
+
 if [ -f "${WASI_SDK_CLANG}" ]; then
-   ${WASI_SDK_CLANG} ${WASI_SDK_SYSROOT} -pthread --target=wasm32-wasi-threads -fno-exceptions -Wl,--import-memory,--export-memory,--max-memory=67108864 "${PROGRAM_CODE}" -o bin/latency.wasm
-else
-   cp artifacts/latency.wasm bin/latency.wasm
+   ${WASI_SDK_CLANG} ${WASI_SDK_SYSROOT} -pthread --target=wasm32-wasi-threads -fno-exceptions -Wl,--import-memory,--export-memory,--max-memory=67108864 "${PROGRAM_CODE}" -o artifacts/latency.wasm
 fi
+cp artifacts/latency.wasm bin/latency.wasm
+
 if [ -f "${WAMRC}" ]; then
 	${WAMRC} --enable-multi-thread -o bin/latency.aot bin/latency.wasm
 	${WAMRC} --enable-multi-thread --target=aarch64v8 -o artifacts/latency-arm.aot bin/latency.wasm
