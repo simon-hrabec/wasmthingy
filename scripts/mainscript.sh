@@ -59,8 +59,8 @@ sudo scripts/runscript.sh bin/latency_with_prio_cpp ${MICRO_TIME} "${OUTPUT_DIR}
 sudo scripts/runscript.sh bin/latency_with_prio_posix ${MICRO_TIME} "${OUTPUT_DIR}" "with_prio_posix" "${CORE_COUNT}" "${APPLY_STRESS}"
 sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}" "node" "${CORE_COUNT}" "${APPLY_STRESS}"
 sudo scripts/runscript.sh "${WASMTIME} run bin/latency.cwasm --allow-precompiled --wasm-features=all --wasi-modules=experimental-wasi-threads" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmtime" "${CORE_COUNT}" "${APPLY_STRESS}"
-sudo scripts/runscript.sh "${WASMER} run --cranelift bin/latency-wasmer-cranelift.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_cranelift" "${CORE_COUNT}" "${APPLY_STRESS}"
-sudo scripts/runscript.sh "${WASMER} run --llvm bin/latency-wasmer-llvm.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_llvm" "${CORE_COUNT}" "${APPLY_STRESS}"
+sudo scripts/runscript.sh "${WASMER} run --cranelift bin/latency-wasmer-cranelift.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_cranelift" "${CORE_COUNT}" "${APPLY_STRESS}"
+sudo scripts/runscript.sh "${WASMER} run --llvm bin/latency-wasmer-llvm.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_llvm" "${CORE_COUNT}" "${APPLY_STRESS}"
 sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wamr" "${CORE_COUNT}" "${APPLY_STRESS}"
 
 mkdir -p graphs
