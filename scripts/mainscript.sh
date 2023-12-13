@@ -30,9 +30,9 @@ WAMR="$(which iwasm)"
 
 rm -rf bin
 mkdir -p bin
-g++ -Wall -pedantic -pthread -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_no_prio
-g++ -Wall -pedantic -pthread -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_with_prio_cpp
-g++ -Wall -pedantic -pthread -DGATHER_ALL -DPRIO "${OLD_CODE}" -o bin/latency_with_prio_posix
+g++ -Wall -pedantic -pthread -std=c++17 -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_no_prio
+g++ -Wall -pedantic -pthread -std=c++17 -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_with_prio_cpp
+g++ -Wall -pedantic -pthread -std=c++17 -DGATHER_ALL -DPRIO "${OLD_CODE}" -o bin/latency_with_prio_posix
 emcc -pthread -DGATHER_ALL -sINITIAL_MEMORY=268435456 "${PROGRAM_CODE}" -o bin/latency_emcc.js
 
 if [ -f "${WASI_SDK_CLANG}" ]; then
