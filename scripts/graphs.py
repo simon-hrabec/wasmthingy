@@ -59,10 +59,11 @@ latency_with_prio_posix = genfromtxt(data_dir+'/latency_with_prio_posix', delimi
 latency_node = genfromtxt(data_dir+'/latency_node', delimiter=';')
 latency_wasmtime = genfromtxt(data_dir+'/latency_wasmtime', delimiter=';')
 latency_wamr = genfromtxt(data_dir+'/latency_wamr', delimiter=';')
-latency_wasmer_singlepass = genfromtxt(data_dir+'/latency_wasmer_singlepass', delimiter=';')
+# latency_wasmer_singlepass = genfromtxt(data_dir+'/latency_wasmer_singlepass', delimiter=';')
 latency_wasmer_cranelift = genfromtxt(data_dir+'/latency_wasmer_cranelift', delimiter=';')
 latency_wasmer_llvm = genfromtxt(data_dir+'/latency_wasmer_llvm', delimiter=';')
-latency_data = [latency_no_prio, latency_with_prio_cpp, latency_with_prio_posix, latency_node, latency_wasmtime, latency_wamr, latency_wasmer_singlepass, latency_wasmer_cranelift, latency_wasmer_llvm]
+# latency_data = [latency_no_prio, latency_with_prio_cpp, latency_with_prio_posix, latency_node, latency_wasmtime, latency_wamr, latency_wasmer_singlepass, latency_wasmer_cranelift, latency_wasmer_llvm]
+latency_data = [latency_no_prio, latency_with_prio_cpp, latency_with_prio_posix, latency_node, latency_wasmtime, latency_wamr, latency_wasmer_cranelift, latency_wasmer_llvm]
 
 jitter_no_prio = genfromtxt(data_dir+'/jitter_no_prio', delimiter=';')
 jitter_with_prio_cpp = genfromtxt(data_dir+'/jitter_with_prio_cpp', delimiter=';')
@@ -70,42 +71,53 @@ jitter_with_prio_posix = genfromtxt(data_dir+'/jitter_with_prio_posix', delimite
 jitter_node = genfromtxt(data_dir+'/jitter_node', delimiter=';')
 jitter_wasmtime = genfromtxt(data_dir+'/jitter_wasmtime', delimiter=';')
 jitter_wamr = genfromtxt(data_dir+'/jitter_wamr', delimiter=';')
-jitter_wasmer_singlepass = genfromtxt(data_dir+'/jitter_wasmer_singlepass', delimiter=';')
 jitter_wasmer_cranelift = genfromtxt(data_dir+'/jitter_wasmer_cranelift', delimiter=';')
 jitter_wasmer_llvm = genfromtxt(data_dir+'/jitter_wasmer_llvm', delimiter=';')
-jitter_data = [jitter_no_prio, jitter_with_prio_cpp, jitter_with_prio_posix, jitter_node, jitter_wasmtime, jitter_wamr, jitter_wasmer_singlepass, jitter_wasmer_cranelift, jitter_wasmer_llvm]
+jitter_data = [jitter_no_prio, jitter_with_prio_cpp, jitter_with_prio_posix, jitter_node, jitter_wasmtime, jitter_wamr, jitter_wasmer_cranelift, jitter_wasmer_llvm]
 
 latency_arr = [
-	(0, 0, "C++", 200, latency_no_prio),
-	(0, 1, "C++ (prio/C++ sleep)", 200, latency_with_prio_cpp),
-	(0, 2, "C++ (pri/POSIX sleep)", 200, latency_with_prio_posix),
-	(1, 0, "node", 200, latency_node),
-	(1, 1, "wastime", 200, latency_wasmtime),
-	(1, 2, "wamr", 200, latency_wamr),
-	(2, 0, "wasmer singlepass", 2500, latency_wasmer_singlepass),
+	(0, 0, "C++", 50, latency_no_prio),
+	(0, 1, "C++ (prio/C++ sleep)", 50, latency_with_prio_cpp),
+	(0, 2, "C++ (pri/POSIX sleep)", 50, latency_with_prio_posix),
+	(1, 0, "node", 50, latency_node),
+	(1, 1, "wastime", 50, latency_wasmtime),
+	(1, 2, "wamr", 50, latency_wamr),
 	(2, 1, "wasmer cranelift", 2500, latency_wasmer_cranelift),
 	(2, 2, "wasmer llvm", 2500, latency_wasmer_llvm),
 ]
 
 jitter_arr = [
-	(0, 0, "C++", 200, jitter_no_prio),
-	(0, 1, "C++ (prio/C++ sleep)", 200, jitter_with_prio_cpp),
-	(0, 2, "C++ (pri/POSIX sleep)", 200, jitter_with_prio_posix),
-	(1, 0, "node", 200, jitter_node),
-	(1, 1, "wastime", 200, jitter_wasmtime),
-	(1, 2, "wamr", 200, jitter_wamr),
-	(2, 0, "wasmer singlepass", 2500, jitter_wasmer_singlepass),
+	(0, 0, "C++", 50, jitter_no_prio),
+	(0, 1, "C++ (prio/C++ sleep)", 50, jitter_with_prio_cpp),
+	(0, 2, "C++ (pri/POSIX sleep)", 50, jitter_with_prio_posix),
+	(1, 0, "node", 50, jitter_node),
+	(1, 1, "wastime", 50, jitter_wasmtime),
+	(1, 2, "wamr", 50, jitter_wamr),
 	(2, 1, "wasmer cranelift", 2500, jitter_wasmer_cranelift),
 	(2, 2, "wasmer llvm", 2500, jitter_wasmer_llvm),
 ]
 
-labels=['no_prio', 'with_prio_cpp', 'with_prio_posix', 'node', 'wasmtime', 'wamr', 'wasmer_singlepass', 'wasmer_cranelift', 'wasmer_llvm']
+labels=['no_prio', 'with_prio_cpp', 'with_prio_posix', 'node', 'wasmtime', 'wamr', 'wasmer_cranelift', 'wasmer_llvm']
 
 print_histograms(latency_arr, 'graphs/latency_hist')
 print_histograms(jitter_arr, 'graphs/jitter_hist')
 
 print_boxplots(latency_data, labels, 'graphs/latency_box')
 print_boxplots(jitter_data, labels, 'graphs/jitter_box')
+
+
+stats = [
+	("C++", np.std(latency_no_prio), np.mean(latency_no_prio)),
+	("C++ (prio/C++ sleep)", np.std(latency_with_prio_cpp), np.mean(latency_with_prio_cpp)),
+	("C++ (pri/POSIX sleep)", np.std(latency_with_prio_posix), np.mean(latency_with_prio_posix)),
+	("node", np.std(latency_node), np.mean(latency_node)),
+	("wastime", np.std(latency_wasmtime), np.mean(latency_wasmtime)),
+	("wamr", np.std(latency_wamr), np.mean(latency_wamr)),
+	("wasmer cranelift", np.std(latency_wasmer_cranelift), np.mean(latency_wasmer_cranelift)),
+	("wasmer llvm", np.std(latency_wasmer_llvm), np.mean(latency_wasmer_llvm)),
+]
+
+print(stats)
 
 pdf.close()
 print('Graph generated: ' + output_pdf)

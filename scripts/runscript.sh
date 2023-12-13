@@ -15,7 +15,11 @@ PROGRAM=${1:-"a.out"}
 DURATION="${2:-${DEFAULT_DURATION}}"
 OUTPUT_DIR=${3:-${POSSIBLE_OUTPUT_DIR}}
 NAME=${4:-${POSSIBLE_NAME}}
-CORES=${6:-"4"}
+CORES=${5:-"4"}
+APPLY_STRESS=${6:-"OFF"}
+
+echo CORES $CORES
+echo APPLY_STRESS $APPLY_STRESS
 
 OUTFILE_STATS="${OUTPUT_DIR}/stats_${NAME}"
 OUTFILE_LATENCY="${OUTPUT_DIR}/latency_${NAME}"
@@ -30,9 +34,18 @@ echo "Latencies stored in $(realpath ${OUTFILE_LATENCY})"
 echo "Jitter stored in $(realpath ${OUTFILE_JITTER})"
 echo "Running \"${PROGRAM} 4 ${DURATION} > ${TEMPFILE} &\""
 ${PROGRAM} 4 "${DURATION}" > ${TEMPFILE} &
+PROGRAM_PID=$!
 sleep 1
 sudo chrt -f -a -p 80 $(ps -ef | grep "[0-9] ${PROGRAM}" | awk '{print $2}')
-wait
+if [ $APPLY_STRESS = "ON" ]; then
+	stress-ng -c "${CORES}" &
+	STRESS_PID=$!
+fi
+wait "${PROGRAM_PID}"
+if [ $APPLY_STRESS = "ON" ]; then
+	kill -9 "${STRESS_PID}"
+fi
+
 grep 'T: *\([0-9]*\) *( *\([0-9]*\) *) P: *\([0-9]*\) *I: *\([0-9]*\) *C: *\([0-9]*\) *Min: *\([0-9]*\) *Act: *\([0-9]*\) *Avg: *\([0-9]*\) *Max: *\([0-9]*\)' "${TEMPFILE}" | sed 's|T: *\([0-9]*\) *( *\([0-9]*\) *) P: *\([0-9]*\) *I: *\([0-9]*\) *C: *\([0-9]*\) *Min: *\([0-9]*\) *Act: *\([0-9]*\) *Avg: *\([0-9]*\) *Max: *\([0-9]*\)|\1;\2;\3;\4;\4;\6;\7;\8;\9|g' > ${OUTFILE_STATS}
 grep 'LATENCY_DATA' "${TEMPFILE}" | sed 's|.*LATENCY_DATA: ;||g' | sed -z 's|\n|;|g;s|;$|\n|' > ${OUTFILE_LATENCY}
 grep 'JITTER_DATA' "${TEMPFILE}" | sed 's|.*JITTER_DATA: ;||g' | sed -z 's|\n|;|g;s|;$|\n|' > ${OUTFILE_JITTER}
