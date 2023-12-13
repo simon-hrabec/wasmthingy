@@ -117,7 +117,8 @@ stats = [
 	("wasmer llvm", np.std(latency_wasmer_llvm), np.mean(latency_wasmer_llvm)),
 ]
 
-print(stats)
+for stat in stats:
+	print(stat)
 
 pdf.close()
 print('Graph generated: ' + output_pdf)

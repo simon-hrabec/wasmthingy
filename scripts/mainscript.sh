@@ -47,10 +47,10 @@ else
 	cp artifacts/latency-arm.aot bin/latency.aot
 fi
 
-"${WASMER}" compile bin/latency.wasm -o bin/latency-wasmer-cranelift.aot --enable-all --cranelift
-"${WASMER}" compile bin/latency.wasm -o bin/latency-wasmer-llvm.aot --enable-all --llvm
+"${WASMER}" compile bin/latency.wasm -o bin/latency-wasmer-cranelift.wasmu --enable-all --cranelift
+"${WASMER}" compile bin/latency.wasm -o bin/latency-wasmer-llvm.wasmu --enable-all --llvm
 
-"${WASMTIME}" compile bin/latency.wasm -o bin/latency.cwasm --wasm-features=all --wasi-modules=experimental-wasi-threads
+WASMTIME_NEW_CLI=0 "${WASMTIME}" compile bin/latency.wasm -o bin/latency.cwasm --wasm-features=all --wasi-modules=experimental-wasi-threads
 
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
