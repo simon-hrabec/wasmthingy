@@ -17,14 +17,14 @@ def get_axs_indexed(axs, x, y, xmax, ymax):
 	else:
 		return axs[x, y]
 
-def print_histograms(data_arr, filename):
+def print_histograms(data_arr, filename, histfrom, histto):
 	coord_dict = {}
 	xmax = 0
 	ymax = 0
-	for x, y, name, hist_width, data in data_arr:
+	for x, y, name, data in data_arr:
 		xmax = max(xmax, x)
 		ymax = max(ymax, y)
-		coord_dict[(x, y)] = (name, hist_width, data)
+		coord_dict[(x, y)] = (name, data)
 
 	plt.figure()
 	plt.clf()
@@ -34,8 +34,8 @@ def print_histograms(data_arr, filename):
 		for y in range(ymax+1):
 			axs_idx = get_axs_indexed(axs, x, y, xmax, ymax)
 			if (x, y) in coord_dict:
-				(name, hist_width, data) = coord_dict[(x, y)]
-				axs_idx.hist(data, range=(0,hist_width), bins=100)
+				(name, data) = coord_dict[(x, y)]
+				axs_idx.hist(data, range=(histfrom,histto), bins=min(101, histto-histfrom+1))
 				axs_idx.set_title(name)
 			else:
 				axs_idx.axis('off')
@@ -48,77 +48,84 @@ def print_histograms(data_arr, filename):
 def print_boxplots(data_arr, labels, filename):
 	plt.figure()
 	plt.clf()
-	plt.boxplot(data_arr, labels=labels)
+	# print(np.array(data_arr).shape, np.array(labels).shape)
+	plt.boxplot(data_arr, labels=labels, showfliers=False)
 	plt.savefig(filename+'.pdf')
 	pdf.savefig()
 	plt.close()
 
-latency_no_prio = genfromtxt(data_dir+'/latency_no_prio', delimiter=';')
-latency_with_prio_cpp = genfromtxt(data_dir+'/latency_with_prio_cpp', delimiter=';')
-latency_with_prio_posix = genfromtxt(data_dir+'/latency_with_prio_posix', delimiter=';')
+latency_original_posix_prio = genfromtxt(data_dir+'/latency_original_posix_prio', delimiter=';')
+latency_rewrite_no_prio = genfromtxt(data_dir+'/latency_rewrite_no_prio', delimiter=';')
+latency_rewrite_posix_prio = genfromtxt(data_dir+'/latency_rewrite_posix_prio', delimiter=';')
+latency_rewrite_chrt_prio = genfromtxt(data_dir+'/latency_rewrite_chrt_prio', delimiter=';')
 latency_node = genfromtxt(data_dir+'/latency_node', delimiter=';')
 latency_wasmtime = genfromtxt(data_dir+'/latency_wasmtime', delimiter=';')
 latency_wamr = genfromtxt(data_dir+'/latency_wamr', delimiter=';')
-# latency_wasmer_singlepass = genfromtxt(data_dir+'/latency_wasmer_singlepass', delimiter=';')
 latency_wasmer_cranelift = genfromtxt(data_dir+'/latency_wasmer_cranelift', delimiter=';')
 latency_wasmer_llvm = genfromtxt(data_dir+'/latency_wasmer_llvm', delimiter=';')
-# latency_data = [latency_no_prio, latency_with_prio_cpp, latency_with_prio_posix, latency_node, latency_wasmtime, latency_wamr, latency_wasmer_singlepass, latency_wasmer_cranelift, latency_wasmer_llvm]
-latency_data = [latency_no_prio, latency_with_prio_cpp, latency_with_prio_posix, latency_node, latency_wasmtime, latency_wamr, latency_wasmer_cranelift, latency_wasmer_llvm]
+latency_data = [latency_original_posix_prio, latency_rewrite_no_prio, latency_rewrite_posix_prio, latency_rewrite_chrt_prio, latency_node, latency_wasmtime, latency_wamr]
 
-jitter_no_prio = genfromtxt(data_dir+'/jitter_no_prio', delimiter=';')
-jitter_with_prio_cpp = genfromtxt(data_dir+'/jitter_with_prio_cpp', delimiter=';')
-jitter_with_prio_posix = genfromtxt(data_dir+'/jitter_with_prio_posix', delimiter=';')
+jitter_original_posix_prio = genfromtxt(data_dir+'/jitter_original_posix_prio', delimiter=';')
+jitter_rewrite_no_prio = genfromtxt(data_dir+'/jitter_rewrite_no_prio', delimiter=';')
+jitter_rewrite_posix_prio = genfromtxt(data_dir+'/jitter_rewrite_posix_prio', delimiter=';')
+jitter_rewrite_chrt_prio = genfromtxt(data_dir+'/jitter_rewrite_chrt_prio', delimiter=';')
 jitter_node = genfromtxt(data_dir+'/jitter_node', delimiter=';')
 jitter_wasmtime = genfromtxt(data_dir+'/jitter_wasmtime', delimiter=';')
 jitter_wamr = genfromtxt(data_dir+'/jitter_wamr', delimiter=';')
 jitter_wasmer_cranelift = genfromtxt(data_dir+'/jitter_wasmer_cranelift', delimiter=';')
 jitter_wasmer_llvm = genfromtxt(data_dir+'/jitter_wasmer_llvm', delimiter=';')
-jitter_data = [jitter_no_prio, jitter_with_prio_cpp, jitter_with_prio_posix, jitter_node, jitter_wasmtime, jitter_wamr, jitter_wasmer_cranelift, jitter_wasmer_llvm]
+jitter_data = [jitter_original_posix_prio, jitter_rewrite_no_prio, jitter_rewrite_posix_prio, jitter_rewrite_chrt_prio, jitter_node, jitter_wasmtime, jitter_wamr]
 
 latency_arr = [
-	(0, 0, "C++", 50, latency_no_prio),
-	(0, 1, "C++ (prio/C++ sleep)", 50, latency_with_prio_cpp),
-	(0, 2, "C++ (pri/POSIX sleep)", 50, latency_with_prio_posix),
-	(1, 0, "node", 50, latency_node),
-	(1, 1, "wastime", 50, latency_wasmtime),
-	(1, 2, "wamr", 50, latency_wamr),
-	(2, 1, "wasmer cranelift", 2500, latency_wasmer_cranelift),
-	(2, 2, "wasmer llvm", 2500, latency_wasmer_llvm),
+	(0, 0, "Original", latency_original_posix_prio),
+	(0, 1, "C++ no prio", latency_rewrite_no_prio),
+	(0, 2, "C++ posix prio", latency_rewrite_posix_prio),
+	(0, 3, "C++ chrt prio", latency_rewrite_chrt_prio),
+	(1, 0, "node", latency_node),
+	(1, 1, "wastime", latency_wasmtime),
+	(1, 2, "WAMR", latency_wamr),
+	# (2, 1, "wasmer cranelift", 2500, latency_wasmer_cranelift),
+	# (2, 2, "wasmer llvm", 2500, latency_wasmer_llvm),
 ]
 
 jitter_arr = [
-	(0, 0, "C++", 50, jitter_no_prio),
-	(0, 1, "C++ (prio/C++ sleep)", 50, jitter_with_prio_cpp),
-	(0, 2, "C++ (pri/POSIX sleep)", 50, jitter_with_prio_posix),
-	(1, 0, "node", 50, jitter_node),
-	(1, 1, "wastime", 50, jitter_wasmtime),
-	(1, 2, "wamr", 50, jitter_wamr),
-	(2, 1, "wasmer cranelift", 2500, jitter_wasmer_cranelift),
-	(2, 2, "wasmer llvm", 2500, jitter_wasmer_llvm),
+	(0, 0, "Original", jitter_original_posix_prio),
+	(0, 1, "C++ no prio", jitter_rewrite_no_prio),
+	(0, 2, "C++ posix prio", jitter_rewrite_posix_prio),
+	(0, 3, "C++ chrt prio", jitter_rewrite_chrt_prio),
+	(1, 0, "node", jitter_node),
+	(1, 1, "wastime", jitter_wasmtime),
+	(1, 2, "WAMR", jitter_wamr),
+	# (2, 1, "wasmer cranelift", 2500, jitter_wasmer_cranelift),
+	# (2, 2, "wasmer llvm", 2500, jitter_wasmer_llvm),
 ]
 
-labels=['no_prio', 'with_prio_cpp', 'with_prio_posix', 'node', 'wasmtime', 'wamr', 'wasmer_cranelift', 'wasmer_llvm']
 
-print_histograms(latency_arr, 'graphs/latency_hist')
-print_histograms(jitter_arr, 'graphs/jitter_hist')
 
+print_histograms(latency_arr, 'graphs/latency_hist', 0, 100)
+print_histograms(jitter_arr, 'graphs/jitter_hist', -20, 20)
+
+# labels=['no_prio', 'with_prio_cpp', 'with_prio_posix', 'node', 'wasmtime', 'wamr', 'wasmer_cranelift', 'wasmer_llvm']
+labels=['Original', 'C++ N', 'C++ P', 'C++ C', 'node', 'wasmtime', 'WAMR']
 print_boxplots(latency_data, labels, 'graphs/latency_box')
 print_boxplots(jitter_data, labels, 'graphs/jitter_box')
 
-
 stats = [
-	("C++", np.std(latency_no_prio), np.mean(latency_no_prio)),
-	("C++ (prio/C++ sleep)", np.std(latency_with_prio_cpp), np.mean(latency_with_prio_cpp)),
-	("C++ (pri/POSIX sleep)", np.std(latency_with_prio_posix), np.mean(latency_with_prio_posix)),
-	("node", np.std(latency_node), np.mean(latency_node)),
-	("wastime", np.std(latency_wasmtime), np.mean(latency_wasmtime)),
-	("wamr", np.std(latency_wamr), np.mean(latency_wamr)),
-	("wasmer cranelift", np.std(latency_wasmer_cranelift), np.mean(latency_wasmer_cranelift)),
-	("wasmer llvm", np.std(latency_wasmer_llvm), np.mean(latency_wasmer_llvm)),
+	("Original", latency_original_posix_prio),
+	("C++ no prio", latency_rewrite_no_prio),
+	("C++ posix prio", latency_rewrite_posix_prio),
+	("C++ chrt prio", latency_rewrite_chrt_prio),
+	("node", latency_node),
+	("wastime", latency_wasmtime),
+	("WAMR", latency_wamr),
+	("wasmer cranelift", latency_wasmer_cranelift),
+	("wasmer llvm", latency_wasmer_llvm),
 ]
 
 for stat in stats:
-	print(stat)
+	print("{} & {:.2f} & {:.2f} & {:.2f} & {:.2f} \\\\ \\hline".format(stat[0], np.min(stat[1]), np.mean(stat[1]), np.max(stat[1]), np.std(stat[1])))
+	# C++1 & 8.33 & 8.18 & 12.12 \\
+	# print(stat)
 
 pdf.close()
 print('Graph generated: ' + output_pdf)

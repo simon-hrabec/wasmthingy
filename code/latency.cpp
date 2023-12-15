@@ -25,9 +25,7 @@ static bool warming_up_over = false;
 static pthread_barrier_t globalt_barr;
 static pthread_barrier_t align_barr;
 static timespec globalt;
-#ifdef GATHER_ALL
 static size_t data_expected_size = 0;
-#endif
 
 void* func(void* arg) {
     // clock_nanosleep(0, 0, nullptr, nullptr);
@@ -62,10 +60,8 @@ struct thread_statistics {
     long hist_overflow;
     long num_outliers;
     unsigned long smi_count;
-    #ifdef GATHER_ALL
     std::vector<int64_t> *latency_data;
     std::vector<int64_t> *jitter_data;
-    #endif
 };
 
 struct thread_parameters {
@@ -205,15 +201,6 @@ void print_statistics(thread_parameters *parameters, const int index) {
         statistics->act,
         statistics->cycles ? (long)(statistics->avg/statistics->cycles) : 0,
         statistics->max);
-
-    #ifdef GATHER_ALL
-    // printf("T:%2d;(%5d), DATA", index, statistics->tid);
-
-    // for(const auto val : *statistics->data) {
-    //     std::cout << ";" << val;
-    // }
-    // std::cout << std::endl;
-    #endif
 }
 
 
@@ -223,10 +210,8 @@ void* timer_thread(void *thread_parameters_void) {
     timespec now, prev_now, next, interval;
     sigset_t sigset;
     bool warmed_up = false;
-    #ifdef GATHER_ALL
     statistics->latency_data->reserve(data_expected_size);
     statistics->jitter_data->reserve(data_expected_size);
-    #endif
 
     cpu_set_t mask;
     CPU_ZERO(&mask);
@@ -328,10 +313,8 @@ void* timer_thread(void *thread_parameters_void) {
 
         const int64_t difference = calcdiff(now, prev_now)-INTERVAL;
 
-        #ifdef GATHER_ALL
         statistics->latency_data->push_back(latency);
         statistics->jitter_data->push_back(difference);
-        #endif
 
         statistics->cycles++;
 
@@ -351,10 +334,8 @@ void* timer_thread(void *thread_parameters_void) {
             statistics->avg = 0.0;
             statistics->threadstarted = 1;
             statistics->smi_count = 0;
-            #ifdef GATHER_ALL
             statistics->latency_data->resize(0);
             statistics->jitter_data->resize(0);
-            #endif
             warmed_up = true;
         }
     }
@@ -396,10 +377,8 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
     statistics->avg = 0.0;
     statistics->threadstarted = 1;
     statistics->smi_count = 0;
-    #ifdef GATHER_ALL
     statistics->latency_data = new std::vector<int64_t>();
     statistics->jitter_data = new std::vector<int64_t>();
-    #endif
 
     const int pthread_create_call_rv = pthread_create(&statistics->thread, &attr, timer_thread, parameters);
     if (pthread_create_call_rv) {
@@ -411,9 +390,7 @@ void create_timer_thread(thread_parameters **parameters_array, thread_statistics
 void main_loop(const int thread_count, const int running_time_us) {
     thread_parameters ** const parameters_array = new thread_parameters*[thread_count];
     thread_statistics ** const statistics_array = new thread_statistics*[thread_count];
-    #ifdef GATHER_ALL
     data_expected_size = 2*running_time_us/INTERVAL;
-    #endif
 
     for(int i = 0; i < thread_count; i++) {
         std::cout << "creating thread" << std::endl;

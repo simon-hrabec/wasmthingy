@@ -2,11 +2,11 @@
 
 # $1 = OUTPUT DIR
 # $2 = GRAPH PDF NAME
-# $2 = TEST TIME - SECONDS
+# $3 = TEST TIME - SECONDS
+# $4 = CORE COUNT
 
 DEFAULT_TEST_TIME_SEC="4"
 DEFAULT_CORE_COUNT="4"
-DEFAULT_APPLY_STRESS="OFF"
 
 OUTPUT_DIR="${1:-output}"
 PDF_NAME="${2:-graphs.pdf}"
@@ -29,9 +29,10 @@ WAMR="$(which iwasm)"
 
 rm -rf bin
 mkdir -p bin
-g++ -Wall -pedantic -pthread -std=c++17 -DGATHER_ALL "${PROGRAM_CODE}" -o bin/latency_no_prio
-g++ -Wall -pedantic -pthread -std=c++17 -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_with_prio_cpp
-g++ -Wall -pedantic -pthread -std=c++17 -DGATHER_ALL -DPRIO "${OLD_CODE}" -o bin/latency_with_prio_posix
+g++ -Wall -pedantic -pthread -std=c++17 -DPRIO "${OLD_CODE}" -o bin/latency_original_posix_with_prio
+g++ -Wall -pedantic -pthread -std=c++17 "${PROGRAM_CODE}" -o bin/latency_rewrite_no_prio
+g++ -Wall -pedantic -pthread -std=c++17 -DPOSIX_PRORITY_SETUP "${PROGRAM_CODE}" -o bin/latency_rewrite_with_posix_prio
+
 emcc -pthread -DGATHER_ALL -sINITIAL_MEMORY=268435456 "${PROGRAM_CODE}" -o bin/latency_emcc.js
 
 if [ -f "${WASI_SDK_CLANG}" ]; then
@@ -53,14 +54,16 @@ WASMTIME_NEW_CLI=0 "${WASMTIME}" compile bin/latency.wasm -o bin/latency.cwasm -
 
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
-sudo scripts/runscript.sh bin/latency_no_prio ${MICRO_TIME} "${OUTPUT_DIR}" "no_prio" "${CORE_COUNT}"
-sudo scripts/runscript.sh bin/latency_with_prio_cpp ${MICRO_TIME} "${OUTPUT_DIR}" "with_prio_cpp" "${CORE_COUNT}"
-sudo scripts/runscript.sh bin/latency_with_prio_posix ${MICRO_TIME} "${OUTPUT_DIR}" "with_prio_posix" "${CORE_COUNT}"
-sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}" "node" "${CORE_COUNT}"
-sudo scripts/runscript.sh "${WASMTIME} run bin/latency.cwasm --allow-precompiled --wasm-features=all --wasi-modules=experimental-wasi-threads" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmtime" "${CORE_COUNT}"
-sudo scripts/runscript.sh "${WASMER} run --cranelift bin/latency-wasmer-cranelift.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_cranelift" "${CORE_COUNT}"
-sudo scripts/runscript.sh "${WASMER} run --llvm bin/latency-wasmer-llvm.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_llvm" "${CORE_COUNT}"
-sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wamr" "${CORE_COUNT}"
+sudo scripts/runscript.sh bin/latency_original_posix_with_prio ${MICRO_TIME} "${OUTPUT_DIR}" "original_posix_prio" "${CORE_COUNT}" "OFF"
+sudo scripts/runscript.sh bin/latency_rewrite_no_prio ${MICRO_TIME} "${OUTPUT_DIR}" "rewrite_no_prio" "${CORE_COUNT}" "OFF"
+sudo scripts/runscript.sh bin/latency_rewrite_with_posix_prio ${MICRO_TIME} "${OUTPUT_DIR}" "rewrite_posix_prio" "${CORE_COUNT}" "OFF"
+sudo scripts/runscript.sh bin/latency_rewrite_no_prio ${MICRO_TIME} "${OUTPUT_DIR}" "rewrite_chrt_prio" "${CORE_COUNT}" "ON"
+sudo scripts/runscript.sh "${NODE} bin/latency_emcc.js" ${MICRO_TIME} "${OUTPUT_DIR}" "node" "${CORE_COUNT}" "ON"
+sudo scripts/runscript.sh "${WASMTIME} run bin/latency.cwasm --allow-precompiled --wasm-features=all --wasi-modules=experimental-wasi-threads" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmtime" "${CORE_COUNT}" "ON"
+sudo scripts/runscript.sh "${WASMER} run --cranelift bin/latency-wasmer-cranelift.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_cranelift" "${CORE_COUNT}" "ON"
+sudo scripts/runscript.sh "${WASMER} run --llvm bin/latency-wasmer-llvm.wasmu" ${MICRO_TIME} "${OUTPUT_DIR}" "wasmer_llvm" "${CORE_COUNT}" "ON"
+sudo scripts/runscript.sh "${WAMR} bin/latency.aot" ${MICRO_TIME} "${OUTPUT_DIR}" "wamr" "${CORE_COUNT}" "ON"
 
 mkdir -p graphs
+echo "Generating graphs: python scripts/graphs.py ${OUTPUT_DIR} graphs/${PDF_NAME}"
 python scripts/graphs.py "${OUTPUT_DIR}" "graphs/${PDF_NAME}"
