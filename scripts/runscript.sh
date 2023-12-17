@@ -39,6 +39,7 @@ ${PROGRAM} ${CORES} "${DURATION}" > ${TEMPFILE} &
 PROGRAM_PID=$!
 sleep 1
 if [ $SET_PRIORITY="ON" ]; then
+	echo "SETTING UP PRIORITY"
 	sudo chrt -f -a -p 80 $(ps -ef | grep "[0-9] ${PROGRAM}" | awk '{print $2}')
 fi
 wait 
